@@ -1,4 +1,5 @@
-name: Selenium Java Tests
+
+name: Selenium Java Tests & Docker Publish
 
 on:
   push:
@@ -7,6 +8,8 @@ on:
     branches: ["main"]
 
 jobs:
+
+  # JOB 1: Execute Selenium TestNG Automation Tests
   selenium-test:
     runs-on: ubuntu-latest
 
@@ -18,7 +21,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
           cache: maven
 
       - name: Set up Chrome
@@ -31,3 +34,33 @@ jobs:
 
       - name: Run Selenium tests
         run: mvn clean test
+
+  # JOB 2: Build and Publish Docker Image
+  build-and-publish-docker:
+    needs: selenium-test
+    runs-on: ubuntu-latest
+
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/selenium-testng-automation:latest
+            ${{ secrets.DOCKER_USERNAME }}/selenium-testng-automation:${{ github.sha }}
